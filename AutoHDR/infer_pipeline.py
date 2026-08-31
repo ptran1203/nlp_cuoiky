@@ -724,7 +724,13 @@ if __name__ == '__main__':
 
     config_file = './ckpt/damage_detect.py' # 网络模型py文件
     damage_detect_checkpoint_file = './ckpt/damage_detect.pth'  # 训练好的模型参数
-    model_name_or_path = './ckpt/AutoHDR-Qwen2-7B'
+    model_name_or_path = './ckpt/AutoHDR-Qwen2-1.5B'
+    # NOTE: pinned to 1.5B here (not the original 7B default) rather than via a
+    # --model_name_or_path CLI override - argparse's `nargs='+'` on that flag wraps any
+    # explicit value in a list (e.g. ['./ckpt/AutoHDR-Qwen2-1.5B']), which
+    # AutoModelForCausalLM.from_pretrained() then rejects with
+    # "Repo id must be in the form 'repo_name' or 'namespace/repo_name'" - only the unwrapped
+    # default bypasses that nargs behavior, so the default itself has to be the right value.
     ocr_det_weights = './ckpt/best.pt'
 
     parser = argparse.ArgumentParser(prog='test.py')
