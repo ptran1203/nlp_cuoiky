@@ -1,0 +1,6 @@
+# Local, GPU-free tooling only (dataset schema/validate/convert/evaluate/download).
+# The heavy AutoHDR pipeline deps (torch, mmcv, mmdet, diffusers, transformers, ...)
+# are installed separately inside WSL2 - see setup/install_env.sh.
+Pillow>=10.0
+pytest>=8.0
+gdown>=5.2

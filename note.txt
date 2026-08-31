@@ -1,0 +1,14 @@
+
+DEADLINE : 3/9
+
+Với đề tài loại 1, áp dụng tiêu chí: Chỉ cần cài đặt được đúng theo mã nguồn +data có sẵn (người hướng dẫn sẽ cung cấp/giới thiệu nguồn) là đạt yêu cầu 80%, còn nếu cải tiến thì có thể lên đến 100% hay hơn 100%.
+
+
+https://github.com/SCUT-DLVCLab/AutoHDR
+
+link data: https://drive.google.com/file/d/1hAXcWcbUUgQ2EySdWdr0--VIhp-iQ_1X/view?usp=sharing
+
+
+unet: unet: https://drive.google.com/file/d/1Z2cGg6NIRknk0a2dfWbE1u79rBLDboD4/view?usp=drive_link
+ocr: https://drive.google.com/file/d/1hPVDG2haYDG5e5FfIpW7IxiYJIf13Rct/view?usp=drive_link
+qwen: https://drive.google.com/file/d/15q1XI7cQYLvnDV4iETCkividwGCLhtn_/view?usp=drive_link

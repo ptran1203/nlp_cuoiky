@@ -1,0 +1,33 @@
+# Downloaded model weights (gated BaiduYun downloads, ~16GB - not for redistribution)
+AutoHDR/ckpt/
+
+# OCR binaries: proprietary compiled executables from the gated OCR Model download, plus their
+# PyInstaller _internal/ bundle (~16,700 files, bundles its own torch/CUDA/etc) - not for
+# redistribution, and far too large for git anyway. Re-place these locally per docs/checkpoints.md.
+AutoHDR/dist/
+
+# Generated at runtime, not source
+AutoHDR/results/
+AutoHDR/tmp_img/
+AutoHDR/*.log
+AutoHDR/requirements-windows.generated.txt
+AutoHDR/requirements-colab-filtered.txt
+AutoHDR/det_model_subprocess.log
+
+# The FPHDR dataset (real+synthetic, ~9GB, gated download - see note.txt for the source link)
+data/
+
+# Local Windows venv
+venv/
+AutoHDR/venv/
+
+# Python/tooling artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Local install logs / scratch
+setup/install_env.log
+smoke_test_vram.csv
+*.zip
