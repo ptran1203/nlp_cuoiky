@@ -28,14 +28,30 @@ class reg_model:
             # the GPU reproduces the one config actually proven to work.
             env = os.environ.copy()
             env['CUDA_VISIBLE_DEVICES'] = ''
+
+            # stderr redirected to a log FILE, not PIPE - reading a PIPE only reliably works once
+            # the process has actually exited, and stdout must stay a PIPE (it carries the real
+            # length-prefixed protocol), so there's no clean way to also read stderr on failure
+            # without either a background thread or a file. A file also survives even if
+            # cleanup() runs before we get to read it.
+            self._log_path = os.path.abspath('reg_model_subprocess.log')
+            self._log_file = open(self._log_path, 'w')
             self.process = subprocess.Popen(
                 cmd,
                 env=env,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=self._log_file,
             )
             print(f'Process started with PID {self.process.pid}', file=sys.stderr, flush=True)
+
+    def _read_log_tail(self, max_chars: int = 4000) -> str:
+        try:
+            with open(self._log_path, 'r', errors='replace') as f:
+                text = f.read()
+            return text[-max_chars:] if len(text) > max_chars else text
+        except Exception as e:
+            return f"(couldn't read log: {e})"
 
     def __call__(self, x: torch.Tensor, device: str = 'cuda') -> torch.Tensor:
         if self.process is None or self.process.poll() is not None:
@@ -83,15 +99,13 @@ class reg_model:
             
         except Exception as e:
             print(f"Error during communication: {e}", file=sys.stderr, flush=True)
-            if self.process.poll() is not None:
-                print(f"Process terminated with code {self.process.poll()}", 
-                      file=sys.stderr, flush=True)
-                error = self.process.stderr.read()
-                if error:
-                    print(f"Process error output: {error.decode()}", 
-                          file=sys.stderr, flush=True)
+            if getattr(self, '_log_file', None) is not None:
+                self._log_file.flush()
+            print(f"Process poll: {self.process.poll()}", file=sys.stderr, flush=True)
+            print(f"Log tail ({getattr(self, '_log_path', '?')}):", file=sys.stderr, flush=True)
+            print(self._read_log_tail(), file=sys.stderr, flush=True)
             raise
-    
+
     def cleanup(self):
         """清理资源"""
         if self.process is not None:
@@ -101,19 +115,24 @@ class reg_model:
                     self.process.stdin.close()
                     self.process.wait(timeout=1.0)
                 except subprocess.TimeoutExpired:
-                    print('Process not responding, terminating...', 
+                    print('Process not responding, terminating...',
                           file=sys.stderr, flush=True)
                     self.process.terminate()
                     try:
                         self.process.wait(timeout=1.0)
                     except subprocess.TimeoutExpired:
-                        print('Process still not responding, killing...', 
+                        print('Process still not responding, killing...',
                               file=sys.stderr, flush=True)
                         self.process.kill()
                         self.process.wait()
-            
+
             self.process.stdout.close()
-            self.process.stderr.close()
+            if getattr(self, '_log_file', None) is not None:
+                try:
+                    self._log_file.close()
+                except:
+                    pass
+                self._log_file = None
             self.process = None
             print('Process cleaned up', file=sys.stderr, flush=True)
 
