@@ -21,19 +21,22 @@ class reg_model:
             # stdin/stdout/stderr transparently, so __call__'s pipe protocol below is unchanged.
             cmd = wsl_command(self.executable_path) if is_windows() else [self.executable_path]
 
-            # Force this subprocess to see no GPU at all, regardless of platform - same reasoning
-            # as det_wrapper.py: the frozen binary bundles its own CUDA runtime at build time, and
-            # on a machine where a real GPU IS visible (e.g. Colab, unlike WSL2 which has none at
-            # all) a version/driver mismatch there can hang or crash it before it's usable. Hiding
-            # the GPU reproduces the one config actually proven to work.
+            # NOT hiding the GPU here, unlike det_wrapper.py. Confirmed by actually running it:
+            # reg_model's checkpoint was saved with CUDA-tagged tensors, and its own torch.load()
+            # call (inside the compiled binary, can't patch it) doesn't pass map_location='cpu' -
+            # with CUDA_VISIBLE_DEVICES='' hiding the GPU, deserialization itself fails outright:
+            # "Attempting to deserialize object on a CUDA device but torch.cuda.is_available() is
+            # False." det_model's checkpoint loads fine either way (confirmed separately), so only
+            # this wrapper needs the GPU left visible - on a machine with a real, working GPU
+            # (Colab), that's not a problem; __call__ below defaults to 'cuda' accordingly.
             env = os.environ.copy()
-            env['CUDA_VISIBLE_DEVICES'] = ''
 
             # stderr redirected to a log FILE, not PIPE - reading a PIPE only reliably works once
             # the process has actually exited, and stdout must stay a PIPE (it carries the real
             # length-prefixed protocol), so there's no clean way to also read stderr on failure
             # without either a background thread or a file. A file also survives even if
-            # cleanup() runs before we get to read it.
+            # cleanup() runs before we get to read it. This is exactly what surfaced the
+            # CUDA-deserialization error above - without it the failure was silent.
             self._log_path = os.path.abspath('reg_model_subprocess.log')
             self._log_file = open(self._log_path, 'w')
             self.process = subprocess.Popen(
@@ -57,46 +60,39 @@ class reg_model:
         if self.process is None or self.process.poll() is not None:
             raise RuntimeError("Process is not running")
 
-        # The subprocess always runs with CUDA_VISIBLE_DEVICES='' now (see start()) - force CPU
-        # regardless of what device the caller passed, same reasoning as det_wrapper.py. Also
-        # force float32 defensively (same "Input type (c10::Half) and bias type (float) should
-        # be the same" failure mode confirmed in det_wrapper.py's path) in case a caller ever
-        # passes a half-precision tensor here too.
-        device = 'cpu'
-
         try:
             input_data = {
-                'tensor': x.float().to(device),
+                'tensor': x.to(device),
                 'device': device
             }
-            
+
             print('Serializing input data...', file=sys.stderr, flush=True)
             data = pickle.dumps(input_data)
-            
+
             # 先发送数据长度
             print('Sending data length...', file=sys.stderr, flush=True)
             self.process.stdin.write(len(data).to_bytes(4, byteorder='big'))
-            
+
             # 发送数据
             print('Sending data...', file=sys.stderr, flush=True)
             self.process.stdin.write(data)
             self.process.stdin.flush()
-            
+
             # 读取响应长度
             print('Reading response length...', file=sys.stderr, flush=True)
             length_bytes = self.process.stdout.read(4)
             if not length_bytes:
                 raise EOFError("Process terminated unexpectedly")
             length = int.from_bytes(length_bytes, byteorder='big')
-            
+
             # 读取响应数据
             print(f'Reading response data ({length} bytes)...', file=sys.stderr, flush=True)
             output_data = self.process.stdout.read(length)
             output = pickle.loads(output_data)
             print('Response received', file=sys.stderr, flush=True)
-            
+
             return output['tensor']
-            
+
         except Exception as e:
             print(f"Error during communication: {e}", file=sys.stderr, flush=True)
             if getattr(self, '_log_file', None) is not None:
