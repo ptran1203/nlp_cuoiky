@@ -161,7 +161,12 @@ class det_model:
             elif mode == 2:
                 if not isinstance(x, torch.Tensor):
                     raise TypeError(f"For mode 2, input should be torch.Tensor, got {type(x)}")
-                
+
+                # Diagnostic: confirm from the CLIENT side (not trusting the server's swallowed
+                # traceback) that the cpu().float() cast above actually took effect on the real
+                # tensor being sent, not just in theory.
+                print(f"mode 2: sending tensor dtype={x.dtype}, shape={tuple(x.shape)}, device={x.device}")
+
                 # 发送数据
                 self._send_data({'x': x, 'mode': mode})
                 
