@@ -705,7 +705,9 @@ def main(data, opt):
         img_invert.paste(image, patch[1]['position'])
 
     restore_img = restore_image(img_invert)
-    combined = concatenate_images_vertical(restore_img, img)
+    # original on top, restored on bottom - concatenate_images_vertical(image1, image2) pastes
+    # image1 at the top, image2 below it, so swap the original repo's (restore_img, img) order.
+    combined = concatenate_images_vertical(img, restore_img)
     print(data)
 
 
