@@ -778,14 +778,20 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--shuffle", action="store_true")
     parser.add_argument("--num_workers", type=int, default=8)
-    
+
+    # Plain type=str, deliberately NOT nargs='+' (unlike --model_name_or_path etc. above) -
+    # nargs='+' wraps any explicit CLI value in a list, which broke from_pretrained() elsewhere
+    # in this same file (see the --model_name_or_path note above) and would do the same here.
+    parser.add_argument("--input", type=str, default="example.jpg", help="path to the input image")
+    parser.add_argument("--output", type=str, default="./results", help="directory to write results into")
+
     opt = parser.parse_args()
 
     if opt.seed is not None:
         set_seed(opt.seed)
-    
-    save_path = './results'
-    img_path = 'example.jpg'
+
+    save_path = opt.output
+    img_path = opt.input
 
 
     if not os.path.exists(save_path):
@@ -801,5 +807,8 @@ if __name__ == '__main__':
 
     restore_img, combined = main(data=img_path, opt=opt)
     if restore_img is not None:
-        restore_img.save(os.path.join(f'{save_path}/img', img_path))
-        combined.save(os.path.join(f'{save_path}/combined', img_path))
+        # basename, not img_path directly - a nested --input like images/FS_12_138_2.jpg would
+        # otherwise need a matching images/ subdirectory to already exist under save_path.
+        out_name = os.path.basename(img_path)
+        restore_img.save(os.path.join(f'{save_path}/img', out_name))
+        combined.save(os.path.join(f'{save_path}/combined', out_name))
