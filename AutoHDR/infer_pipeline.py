@@ -239,8 +239,8 @@ def main(data, opt):
             print('出现了未知的框')
             import pdb; pdb.set_trace()
     
-    if num_degraded > 270:
-        raise ValueError('Too many degraded characters')
+    if num_degraded > 100:
+        raise ValueError(f'Too many degraded characters {num_degraded}')
 
 
     print(f'识别字符：【{num_ocr}】个，识别破损位置：【{num_degraded}】个')
